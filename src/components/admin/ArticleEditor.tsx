@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import Cherry from 'cherry-markdown';
 import 'cherry-markdown/dist/cherry-markdown.css';
 import type { GitHubClient } from './github';
@@ -36,6 +36,7 @@ function stripExt(filename: string): string {
 export default function ArticleEditor({ client, initial, onBack }: Props) {
 	const editorRef = useRef<HTMLDivElement>(null);
 	const cherryRef = useRef<Cherry | null>(null);
+	const fileInputRef = useRef<HTMLInputElement>(null);
 
 	// 初始化时拆分 frontmatter 和正文
 	const parsed = splitFrontmatter(initial.content);
@@ -115,6 +116,51 @@ export default function ArticleEditor({ client, initial, onBack }: Props) {
 		return stringifyArticle(updatedFm, body);
 	}
 
+	// 从本地导入 Markdown 文件：读取文件内容，去掉其中的 frontmatter，
+	// 只把正文载入编辑器（本地上传的 md 通常不含 title/description 等元数据，
+	// 这些仍通过上方表单填写）。
+	async function handleImportFile(e: ChangeEvent<HTMLInputElement>) {
+		const file = e.target.files?.[0];
+		e.target.value = ''; // 允许重复选择同一文件
+		if (!file) return;
+		if (!/\.(md|markdown|mdx)$/i.test(file.name)) {
+			setError('请选择 Markdown 文件（.md / .markdown）');
+			setStatus('error');
+			return;
+		}
+		try {
+			const raw = await file.text();
+			const { fm: parsedFm, body } = splitFrontmatter(raw);
+			cherryRef.current?.setValue(body);
+
+			// 文件若带有 frontmatter，顺带填充（正常本地上传的正文不会有）
+			if (parsedFm.title || parsedFm.description || parsedFm.pubDate) {
+				setFm((prev) => ({
+					...prev,
+					title: parsedFm.title || prev.title,
+					description: parsedFm.description || prev.description,
+					pubDate: parsedFm.pubDate || prev.pubDate,
+					heroImage: parsedFm.heroImage || prev.heroImage,
+				}));
+				if (parsedFm.tags && parsedFm.tags.length) {
+					setTagsText(parsedFm.tags.join(', '));
+				}
+			}
+
+			// 用文件名（或 frontmatter 标题）作为 slug —— 仅当用户尚未手动编辑过 slug
+			if (!slugTouched) {
+				const baseName = file.name.replace(/\.(md|markdown|mdx)$/i, '');
+				setSlug(suggestSlug(parsedFm.title || baseName));
+			}
+
+			setError('');
+			setStatus('dirty');
+		} catch (err) {
+			setError(`导入失败：${err instanceof Error ? err.message : err}`);
+			setStatus('error');
+		}
+	}
+
 	async function handleSave(publish: boolean) {
 		setError('');
 		if (!slug.trim()) {
@@ -178,6 +224,20 @@ export default function ArticleEditor({ client, initial, onBack }: Props) {
 					{statusText}
 				</div>
 				<div className="editor-actions">
+					<input
+						ref={fileInputRef}
+						type="file"
+						accept=".md,.markdown,.mdx"
+						style={{ display: 'none' }}
+						onChange={handleImportFile}
+					/>
+					<button
+						className="btn-secondary"
+						disabled={saving}
+						onClick={() => fileInputRef.current?.click()}
+					>
+						导入本地 Markdown
+					</button>
 					<button className="btn-secondary" disabled={saving} onClick={() => handleSave(false)}>
 						保存草稿
 					</button>
