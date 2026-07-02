@@ -1,0 +1,40 @@
+---
+import { SITE_AUTHOR } from '../consts';
+const today = new Date();
+---
+
+<footer>
+	<div class="footer-inner">
+		<span>&copy; {today.getFullYear()} {SITE_AUTHOR}</span>
+		<span class="dot">·</span>
+		<a href="/rss.xml">RSS</a>
+	</div>
+</footer>
+
+<style>
+	footer {
+		padding: 3em 1em;
+		border-top: 1px solid var(--border);
+		color: var(--text-tertiary);
+		text-align: center;
+		font-size: 0.9em;
+	}
+	.footer-inner {
+		max-width: 960px;
+		margin: 0 auto;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.6em;
+	}
+	.dot {
+		opacity: 0.5;
+	}
+	footer a {
+		color: var(--text-tertiary);
+	}
+	footer a:hover {
+		color: var(--text-secondary);
+		text-decoration: none;
+	}
+</style>

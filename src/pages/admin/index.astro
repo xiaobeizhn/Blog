@@ -1,0 +1,26 @@
+---
+import '../../styles/global.css';
+import AdminApp from '../../components/admin/AdminApp.tsx';
+---
+
+<!doctype html>
+<html lang="zh-CN">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width,initial-scale=1" />
+		<meta name="robots" content="noindex,nofollow" />
+		<title>管理后台 - 博客</title>
+	</head>
+	<body>
+		<AdminApp client:only="react" />
+		<script is:inline>
+			// 同步主题（避免后台闪烁）
+			(function () {
+				const saved = localStorage.getItem('theme');
+				if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+					document.documentElement.classList.add('dark');
+				}
+			})();
+		</script>
+	</body>
+</html>

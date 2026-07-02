@@ -1,0 +1,41 @@
+---
+import BaseHead from '../components/BaseHead.astro';
+import Footer from '../components/Footer.astro';
+import Header from '../components/Header.astro';
+import { SITE_TITLE, SITE_AUTHOR } from '../consts';
+---
+
+<!doctype html>
+<html lang="zh-CN">
+	<head>
+		<BaseHead title={`关于 - ${SITE_TITLE}`} description={`关于 ${SITE_AUTHOR}`} />
+		<style>
+			main {
+				width: var(--content-width);
+				max-width: calc(100% - 2em);
+				margin: 0 auto;
+				padding: 2em 1em 4em;
+			}
+			.page-title {
+				font-size: 2em;
+				margin: 0 0 1em;
+			}
+		</style>
+	</head>
+	<body>
+		<Header />
+		<main class="prose">
+			<h1 class="page-title">关于</h1>
+			<p>你好，我是 {SITE_AUTHOR}。</p>
+			<p>
+				这是我的个人博客，用来记录想法、代码与生活。这里的内容用
+				Markdown 写成，通过后台的实时编辑器发布。
+			</p>
+			<p>欢迎通过以下方式联系我：</p>
+			<ul>
+				<li>GitHub：<a href="https://github.com/xiaobeizhn">@xiaobeizhn</a></li>
+			</ul>
+		</main>
+		<Footer />
+	</body>
+</html>

@@ -1,0 +1,108 @@
+---
+import { getCollection } from 'astro:content';
+import BaseHead from '../../components/BaseHead.astro';
+import Footer from '../../components/Footer.astro';
+import FormattedDate from '../../components/FormattedDate.astro';
+import Header from '../../components/Header.astro';
+import { SITE_TITLE } from '../../consts';
+
+const posts = (await getCollection('blog', ({ data }) => {
+	return import.meta.env.PROD ? data.draft !== true : true;
+})).sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+---
+
+<!doctype html>
+<html lang="zh-CN">
+	<head>
+		<BaseHead title={`文章 - ${SITE_TITLE}`} description="全部文章" />
+		<style>
+			main {
+				width: var(--content-width);
+				max-width: calc(100% - 2em);
+				margin: 0 auto;
+				padding: 2em 1em 4em;
+			}
+			.page-title {
+				font-size: 2em;
+				margin: 0 0 1.5em;
+			}
+			ul {
+				list-style: none;
+				padding: 0;
+				margin: 0;
+			}
+			.post-item {
+				border-bottom: 1px solid var(--border);
+			}
+			.post-link {
+				display: block;
+				padding: 1.6em 0;
+				color: inherit;
+				text-decoration: none;
+			}
+			.post-link:hover {
+				text-decoration: none;
+				color: inherit;
+			}
+			.post-meta {
+				color: var(--text-tertiary);
+				font-size: 0.85em;
+				margin-bottom: 0.3em;
+			}
+			.post-title {
+				font-size: 1.3em;
+				margin: 0 0 0.3em;
+				transition: color 0.15s ease;
+			}
+			.post-link:hover .post-title {
+				color: var(--accent);
+			}
+			.post-desc {
+				color: var(--text-secondary);
+				margin: 0 0 0.5em;
+				font-size: 0.98em;
+			}
+			.post-tags {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 0.5em;
+			}
+			.tag {
+				color: var(--accent);
+				font-size: 0.82em;
+				background: var(--bg-subtle);
+				padding: 0.15em 0.6em;
+				border-radius: 20px;
+			}
+		</style>
+	</head>
+	<body>
+		<Header />
+		<main>
+			<h1 class="page-title">文章</h1>
+			<ul>
+				{
+					posts.map((post) => (
+						<li class="post-item">
+							<a href={`/blog/${post.id}/`} class="post-link">
+								<div class="post-meta">
+									<FormattedDate date={post.data.pubDate} />
+								</div>
+								<h3 class="post-title">{post.data.title}</h3>
+								<p class="post-desc">{post.data.description}</p>
+								{post.data.tags.length > 0 && (
+									<div class="post-tags">
+										{post.data.tags.map((tag) => (
+											<span class="tag">#{tag}</span>
+										))}
+									</div>
+								)}
+							</a>
+						</li>
+					))
+				}
+			</ul>
+		</main>
+		<Footer />
+	</body>
+</html>
