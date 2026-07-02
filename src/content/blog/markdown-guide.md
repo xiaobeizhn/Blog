@@ -3,7 +3,6 @@ title: 'Markdown 编辑指南'
 description: '介绍博客后台 Cherry Markdown 编辑器的基本用法，包括实时预览、图片上传和快捷键。'
 pubDate: '2026-07-02'
 tags: ['教程', 'Markdown']
-draft: false
 ---
 
 博客后台使用 Cherry Markdown 编辑器，支持分屏实时预览。这篇文章介绍基本用法。
@@ -53,7 +52,7 @@ def hello():
 也可以手动输入：
 
 ```markdown
-![图片描述](/images/example.png)
+![图片描述](/images/1782974854262-_____20260506172154_976_1.png)![e0fd6e9a768f22ee78382a1306cec42aa193a76a5dd3c7c959fdf816741fad90.gif](/images/1782990140941-e0fd6e9a768f22ee78382a1306cec42aa193a76a5dd3c7c959fdf816741fad90.gif)
 ```
 
 ### 表格
