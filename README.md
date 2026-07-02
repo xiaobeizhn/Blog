@@ -1,4 +1,4 @@
-# 小北的博客
+# 披着被子的博客
 
 基于 [Astro](https://astro.build/) 的个人博客，部署在 Netlify。
 

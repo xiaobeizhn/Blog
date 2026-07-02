@@ -1,9 +1,9 @@
 // 站点与仓库配置（前台页面和后台管理都会用到）
 
 // ===== 站点信息 =====
-export const SITE_TITLE = '小北的博客';
+export const SITE_TITLE = '披着被子的博客';
 export const SITE_DESCRIPTION = '记录想法、代码与生活';
-export const SITE_AUTHOR = '小北';
+export const SITE_AUTHOR = '披着被子';
 
 // ===== GitHub 仓库配置（后台管理通过 GitHub API 读写文章）=====
 export const REPO = {
