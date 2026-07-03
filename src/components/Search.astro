@@ -1,0 +1,316 @@
+---
+// 导航栏搜索：点击搜索图标（或 Cmd/Ctrl+K）打开浮层，
+// 实时搜索文章标题、描述、标签，支持键盘上下选择 + 回车跳转。
+import { getCollection } from 'astro:content';
+
+const posts = (await getCollection('blog', ({ data }) => {
+	return import.meta.env.PROD ? data.draft !== true : true;
+})).map((p) => ({
+	title: p.data.title,
+	description: p.data.description,
+	tags: p.data.tags,
+	url: `/blog/${p.id}/`,
+}));
+---
+
+<button id="search-trigger" class="search-trigger" aria-label="搜索文章" title="搜索 (Ctrl/⌘ K)">
+	<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
+</button>
+
+<div id="search-overlay" class="search-overlay" hidden>
+	<div class="search-modal" role="dialog" aria-label="搜索文章">
+		<div class="search-input-wrap">
+			<svg class="search-input-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
+			<input id="search-input" class="search-input" type="text" placeholder="搜索文章标题、描述或标签…" autocomplete="off" spellcheck="false" />
+			<button class="search-close" data-close aria-label="关闭">Esc</button>
+		</div>
+		<ul id="search-results" class="search-results"></ul>
+		<div id="search-empty" class="search-empty" hidden>没有找到相关文章。</div>
+	</div>
+</div>
+
+<script type="application/json" id="search-data" set:html={JSON.stringify(posts)}></script>
+
+<style>
+	.search-trigger {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 36px;
+		height: 36px;
+		padding: 0;
+		background: transparent;
+		border: 1px solid var(--border);
+		border-radius: 8px;
+		color: var(--text-secondary);
+		cursor: pointer;
+		transition: all 0.15s ease;
+	}
+	.search-trigger:hover {
+		background: var(--bg-hover);
+		color: var(--text);
+		border-color: var(--border-strong);
+	}
+</style>
+
+<style is:global>
+	.search-overlay {
+		position: fixed;
+		inset: 0;
+		z-index: 100;
+		display: flex;
+		justify-content: center;
+		align-items: flex-start;
+		padding-top: 12vh;
+		/* 无模糊遮罩，仅显示悬浮搜索窗 */
+		background: transparent;
+	}
+	.search-overlay[hidden] {
+		display: none;
+	}
+	.search-modal {
+		position: relative;
+		width: min(620px, calc(100% - 2em));
+		background: var(--bg);
+		border: 1px solid var(--border);
+		border-radius: var(--radius);
+		box-shadow: 0 10px 40px rgba(0, 0, 0, 0.18);
+		overflow: hidden;
+	}
+	.search-input-wrap {
+		display: flex;
+		align-items: center;
+		gap: 0.6em;
+		padding: 0.8em 1em;
+		border-bottom: 1px solid var(--border);
+	}
+	.search-input-icon {
+		color: var(--text-tertiary);
+		flex-shrink: 0;
+	}
+	.search-input {
+		flex: 1;
+		border: none;
+		outline: none;
+		background: transparent;
+		color: var(--text);
+		font-size: 1em;
+		padding: 0.2em 0;
+	}
+	.search-input::placeholder {
+		color: var(--text-tertiary);
+	}
+	.search-close {
+		flex-shrink: 0;
+		font-size: 0.75em;
+		color: var(--text-tertiary);
+		background: var(--bg-subtle);
+		border: 1px solid var(--border);
+		border-radius: 6px;
+		padding: 0.25em 0.6em;
+		cursor: pointer;
+		line-height: 1.4;
+	}
+	.search-close:hover {
+		color: var(--text);
+	}
+
+	.search-results {
+		list-style: none;
+		margin: 0;
+		padding: 0.4em;
+		max-height: min(50vh, 420px);
+		overflow-y: auto;
+	}
+	.search-results:empty {
+		display: none;
+	}
+	.search-result {
+		display: block;
+		padding: 0.7em 0.9em;
+		border-radius: 8px;
+		text-decoration: none;
+		color: var(--text);
+		cursor: pointer;
+		transition: background-color 0.12s ease;
+	}
+	.search-result:hover,
+	.search-result.is-active {
+		background: var(--bg-hover);
+	}
+	.search-result .result-title {
+		font-weight: 600;
+		font-size: 0.98em;
+		margin-bottom: 0.15em;
+	}
+	.search-result .result-desc {
+		color: var(--text-secondary);
+		font-size: 0.85em;
+		line-height: 1.4;
+		overflow: hidden;
+		display: -webkit-box;
+		-webkit-line-clamp: 1;
+		line-clamp: 1;
+		-webkit-box-orient: vertical;
+	}
+	.search-result .result-tags {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.35em;
+		margin-top: 0.4em;
+	}
+	.search-result .result-tag {
+		color: var(--accent);
+		font-size: 0.74em;
+		background: var(--bg-subtle);
+		padding: 0.1em 0.5em;
+		border-radius: 12px;
+	}
+	.search-empty {
+		padding: 1.8em 1em;
+		text-align: center;
+		color: var(--text-tertiary);
+		font-size: 0.92em;
+	}
+</style>
+
+<script>
+	type SearchItem = {
+		title: string;
+		description: string;
+		tags: string[];
+		url: string;
+	};
+
+	function initSearch() {
+		const trigger = document.getElementById('search-trigger');
+		const overlay = document.getElementById('search-overlay');
+		const input = document.getElementById('search-input') as HTMLInputElement | null;
+		const resultsEl = document.getElementById('search-results');
+		const emptyEl = document.getElementById('search-empty');
+		const dataEl = document.getElementById('search-data');
+		if (!trigger || !overlay || !input || !resultsEl || !emptyEl || !dataEl) return;
+
+		let items: SearchItem[] = [];
+		try {
+			items = JSON.parse(dataEl.textContent || '[]');
+		} catch {
+			items = [];
+		}
+
+		let current: SearchItem[] = [];
+		let activeIndex = 0;
+
+		const open = () => {
+			overlay!.hidden = false;
+			input!.value = '';
+			render([]);
+			setTimeout(() => input!.focus(), 0);
+		};
+		const close = () => {
+			overlay!.hidden = true;
+		};
+
+		trigger.addEventListener('click', open);
+		// 点击遮罩层（overlay 本身）关闭，点击模态框内容不关闭
+		overlay.addEventListener('click', (e) => {
+			if (e.target === overlay) close();
+		});
+
+		// 快捷键 Ctrl/⌘+K 打开，Esc 关闭
+		document.addEventListener('keydown', (e) => {
+			if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+				e.preventDefault();
+				overlay!.hidden ? open() : close();
+			}
+			if (e.key === 'Escape' && !overlay!.hidden) close();
+		});
+
+		const score = (item: SearchItem, q: string): number => {
+			if (!q) return 1;
+			const hay = `${item.title} ${item.description} ${item.tags.join(' ')}`.toLowerCase();
+			if (!hay.includes(q)) return -1;
+			// 标题命中加分
+			return item.title.toLowerCase().includes(q) ? 2 : 1;
+		};
+
+		const escapeHtml = (s: string) =>
+			s.replace(/[&<>"']/g, (c) =>
+				({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string)
+			);
+
+		const render = (list: SearchItem[]) => {
+			current = list;
+			activeIndex = 0;
+			if (list.length === 0) {
+				resultsEl!.innerHTML = '';
+				emptyEl!.hidden = input!.value.trim().length > 0 ? false : true;
+				return;
+			}
+			emptyEl!.hidden = true;
+			resultsEl!.innerHTML = list
+				.map((item, i) => {
+					const tags = item.tags
+						.slice(0, 3)
+						.map((t) => `<span class="result-tag">#${escapeHtml(t)}</span>`)
+						.join('');
+					return `<li><a class="search-result${i === 0 ? ' is-active' : ''}" href="${item.url}" data-index="${i}">
+						<div class="result-title">${escapeHtml(item.title)}</div>
+						${item.description ? `<div class="result-desc">${escapeHtml(item.description)}</div>` : ''}
+						${tags ? `<div class="result-tags">${tags}</div>` : ''}
+					</a></li>`;
+				})
+				.join('');
+		};
+
+		const setActive = (idx: number) => {
+			const els = resultsEl!.querySelectorAll<HTMLElement>('.search-result');
+			els.forEach((el, i) => el.classList.toggle('is-active', i === idx));
+			els[idx]?.scrollIntoView({ block: 'nearest' });
+		};
+
+		input.addEventListener('input', () => {
+			const q = input.value.trim().toLowerCase();
+			const matched = items
+				.map((it) => ({ it, s: score(it, q) }))
+				.filter((x) => x.s >= 0)
+				.sort((a, b) => b.s - a.s)
+				.map((x) => x.it);
+			render(matched.slice(0, 12));
+		});
+
+		resultsEl.addEventListener('mousemove', (e) => {
+			const target = (e.target as HTMLElement)?.closest('.search-result') as HTMLElement | null;
+			if (target) {
+				const idx = Number(target.dataset.index);
+				if (!Number.isNaN(idx) && idx !== activeIndex) {
+					activeIndex = idx;
+					setActive(idx);
+				}
+			}
+		});
+
+		input.addEventListener('keydown', (e) => {
+			if (current.length === 0) return;
+			if (e.key === 'ArrowDown') {
+				e.preventDefault();
+				activeIndex = (activeIndex + 1) % current.length;
+				setActive(activeIndex);
+			} else if (e.key === 'ArrowUp') {
+				e.preventDefault();
+				activeIndex = (activeIndex - 1 + current.length) % current.length;
+				setActive(activeIndex);
+			} else if (e.key === 'Enter') {
+				const item = current[activeIndex];
+				if (item) window.location.href = item.url;
+			}
+		});
+	}
+
+	document.addEventListener('astro:page-load', initSearch);
+	if (document.readyState !== 'loading') {
+		initSearch();
+	} else {
+		document.addEventListener('DOMContentLoaded', initSearch);
+	}
+</script>

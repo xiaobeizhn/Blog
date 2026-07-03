@@ -3,6 +3,7 @@ import BaseHead from '../components/BaseHead.astro';
 import Footer from '../components/Footer.astro';
 import Header from '../components/Header.astro';
 import FormattedDate from '../components/FormattedDate.astro';
+import TagSidebar from '../components/TagSidebar.astro';
 import { SITE_DESCRIPTION, SITE_TITLE, SITE_AUTHOR } from '../consts';
 import { getCollection } from 'astro:content';
 
@@ -19,6 +20,7 @@ const posts = (await getCollection('blog', ({ data }) => {
 	</head>
 	<body>
 		<Header />
+		<TagSidebar />
 		<main>
 			<section class="hero">
 				<h1>{SITE_AUTHOR}的博客</h1>
@@ -27,11 +29,17 @@ const posts = (await getCollection('blog', ({ data }) => {
 
 			<section class="posts">
 				<h2 class="section-title">最新文章</h2>
-				{posts.length === 0 && <p class="empty">还没有文章，去<a href="/admin">管理后台</a>写一篇吧。</p>}
+				{
+					posts.length === 0 && (
+						<p class="empty">
+							还没有文章，去<a href="/admin">管理后台</a>写一篇吧。
+						</p>
+					)
+				}
 				<ul>
 					{
 						posts.map((post) => (
-							<li class="post-item">
+							<li class="post-item" data-tags={post.data.tags.join(',')}>
 								<a href={`/blog/${post.id}/`} class="post-link">
 									<div class="post-meta">
 										<FormattedDate date={post.data.pubDate} />
@@ -50,11 +58,18 @@ const posts = (await getCollection('blog', ({ data }) => {
 						))
 					}
 				</ul>
+				<p class="no-results" hidden>没有匹配的文章。</p>
 			</section>
 		</main>
 		<Footer />
 
 		<style>
+			main {
+				width: var(--content-width);
+				max-width: calc(100% - 2em);
+				margin: 0 auto;
+				padding: 3em 1em;
+			}
 			.hero {
 				text-align: center;
 				padding: 1em 0 3em;
@@ -90,12 +105,14 @@ const posts = (await getCollection('blog', ({ data }) => {
 			.post-item {
 				border-bottom: 1px solid var(--border);
 			}
+			.post-item[hidden] {
+				display: none;
+			}
 			.post-link {
 				display: block;
 				padding: 1.8em 0;
 				color: inherit;
 				text-decoration: none;
-				transition: transform 0.15s ease;
 			}
 			.post-link:hover {
 				text-decoration: none;
@@ -130,6 +147,10 @@ const posts = (await getCollection('blog', ({ data }) => {
 				background: var(--bg-subtle);
 				padding: 0.15em 0.6em;
 				border-radius: 20px;
+			}
+			.no-results {
+				color: var(--text-secondary);
+				padding: 2em 0;
 			}
 		</style>
 	</body>

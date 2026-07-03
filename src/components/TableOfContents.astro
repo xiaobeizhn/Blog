@@ -1,0 +1,180 @@
+---
+// 文章右侧浮动目录。
+// 客户端根据正文中的 h1~h4 标题自动生成，支持点击跳转与滚动高亮。
+// 注意：目录项由 JS 在运行时注入，因此样式使用 is:global，
+// 否则 Astro 的 scoped 样式不会作用于动态生成的元素（圆点等会丢失）。
+---
+
+<aside class="toc" aria-label="目录">
+	<nav class="toc-nav"></nav>
+</aside>
+
+<style is:global>
+	.toc {
+		position: fixed;
+		top: 6em;
+		/* 紧贴文章右侧：正文 720px 居中，目录放在其右外侧 */
+		left: calc(50% + var(--content-width) / 2 + 2em);
+		width: 250px;
+		max-height: calc(100vh - 8em);
+		overflow-y: auto;
+		/* 隐藏滚动条，但保留滚动能力 */
+		scrollbar-width: none;
+		-ms-overflow-style: none;
+		font-size: 0.78em;
+		color: var(--text);
+		/* 左侧留出圆点空间，防止小圆点左边缘被截断 */
+		padding-left: 8px;
+	}
+	.toc::-webkit-scrollbar {
+		display: none;
+	}
+
+	.toc-nav {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+	}
+
+	.toc-nav .toc-link {
+		display: block;
+		position: relative;
+		/* 文本让出圆点位置：8px 容器内边距 + 5px 圆点 + 5px 间距 + 层级缩进 */
+		padding: 0.3em 0 0.3em calc(18px + var(--dot-left, 0px));
+		color: var(--text);
+		font-size: 12px;
+		line-height: 1.45;
+		text-decoration: none;
+		transition: color 0.15s ease;
+	}
+
+	/* 每个标题前的小圆点，随层级缩进移动 */
+	.toc-nav .toc-link::before {
+		content: '';
+		position: absolute;
+		left: calc(8px + var(--dot-left, 0px));
+		top: 0.72em;
+		width: 5px;
+		height: 5px;
+		border-radius: 50%;
+		background: var(--border-strong);
+		transition: background 0.15s ease, transform 0.15s ease;
+	}
+
+	.toc-nav .toc-link:hover {
+		color: var(--accent);
+		text-decoration: none;
+	}
+	.toc-nav .toc-link:hover::before {
+		background: var(--accent);
+	}
+
+	.toc-nav .toc-link.active {
+		color: var(--accent);
+		font-weight: 600;
+	}
+	.toc-nav .toc-link.active::before {
+		background: var(--accent);
+		transform: scale(1.5);
+	}
+
+	/* 屏幕较窄时隐藏目录，避免遮挡正文 */
+	@media (max-width: 1180px) {
+		.toc {
+			display: none;
+		}
+	}
+</style>
+
+<script>
+	function initTOC() {
+		const aside = document.querySelector<HTMLElement>('.toc');
+		const tocNav = document.querySelector<HTMLElement>('.toc-nav');
+		if (!aside || !tocNav) return;
+
+		const headings = Array.from(
+			document.querySelectorAll<HTMLElement>('.prose h1, .prose h2, .prose h3, .prose h4')
+		);
+
+		// 没有标题则隐藏目录
+		if (headings.length === 0) {
+			aside.style.display = 'none';
+			return;
+		}
+
+		// 为缺少 id 的标题生成锚点
+		headings.forEach((h, i) => {
+			if (!h.id) h.id = `toc-heading-${i}`;
+		});
+
+		// 以文档中最小的标题层级作为缩进基准（顶层 = 0），每级缩进 10px
+		const minLevel = Math.min(...headings.map((h) => Number(h.tagName.slice(1))));
+
+		tocNav.innerHTML = headings
+			.map((h) => {
+				const level = Number(h.tagName.slice(1));
+				const indent = (level - minLevel) * 10;
+				const text = (h.textContent || '').trim();
+				return `<a class="toc-link" href="#${h.id}" style="--dot-left:${indent}px">${text}</a>`;
+			})
+			.join('');
+
+		const links = Array.from(tocNav.querySelectorAll<HTMLAnchorElement>('.toc-link'));
+		const setActive = (id: string) => {
+			links.forEach((l) => {
+				l.classList.toggle('active', l.getAttribute('href') === `#${id}`);
+			});
+		};
+
+		// 点击目录项跳转时，为导航栏留出空间
+		const NAV_HEIGHT = 70; // 导航栏高度 60px + 底部边框 1px + 间距
+		tocNav.addEventListener('click', (e) => {
+			const target = (e.target as HTMLElement)?.closest('.toc-link') as HTMLAnchorElement | null;
+			if (!target) return;
+			e.preventDefault();
+			const id = target.getAttribute('href')?.slice(1);
+			if (!id) return;
+			const el = document.getElementById(id);
+			if (!el) return;
+			const top = el.getBoundingClientRect().top + window.scrollY - NAV_HEIGHT;
+			window.scrollTo({ top, behavior: 'smooth' });
+			history.replaceState(null, '', `#${id}`);
+		});
+
+		// scroll spy：找到视口顶部最靠上的标题
+		// 使用 scroll 事件 + getBoundingClientRect 更稳定，避免 IntersectionObserver 抖动
+		function getCurrentHeading(): string | null {
+			const scrollY = window.scrollY;
+			for (let i = headings.length - 1; i >= 0; i--) {
+				const h = headings[i];
+				if (h.getBoundingClientRect().top <= NAV_HEIGHT + 10) {
+					return h.id;
+				}
+			}
+			return headings[0]?.id ?? null;
+		}
+
+		let ticking = false;
+		window.addEventListener('scroll', () => {
+			if (!ticking) {
+				requestAnimationFrame(() => {
+					const id = getCurrentHeading();
+					if (id) setActive(id);
+					ticking = false;
+				});
+				ticking = true;
+			}
+		}, { passive: true });
+
+		// 初始化高亮
+		setActive(getCurrentHeading() ?? headings[0].id);
+	}
+
+	// 支持 Astro view transitions 与普通刷新
+	document.addEventListener('astro:page-load', initTOC);
+	if (document.readyState !== 'loading') {
+		initTOC();
+	} else {
+		document.addEventListener('DOMContentLoaded', initTOC);
+	}
+</script>

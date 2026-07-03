@@ -4,6 +4,7 @@ import BaseHead from '../components/BaseHead.astro';
 import Footer from '../components/Footer.astro';
 import FormattedDate from '../components/FormattedDate.astro';
 import Header from '../components/Header.astro';
+import TableOfContents from '../components/TableOfContents.astro';
 
 type Props = CollectionEntry<'blog'>['data'];
 
@@ -72,6 +73,7 @@ const { title, description, pubDate, updatedDate, heroImage, tags } = Astro.prop
 
 	<body>
 		<Header />
+		<TableOfContents />
 		<main>
 			<article>
 				{heroImage && (

@@ -1,0 +1,168 @@
+---
+// 主页左侧浮动标签筛选。
+// 与文章右侧目录栏风格一致：fixed 定位、小圆点、12px 字体。
+// 样式使用 is:global，因为部分 DOM 由客户端脚本操作。
+import { getCollection } from 'astro:content';
+
+const posts = (await getCollection('blog', ({ data }) => {
+	return import.meta.env.PROD ? data.draft !== true : true;
+})).sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+
+const tagCounts = new Map<string, number>();
+for (const post of posts) {
+	for (const tag of post.data.tags) {
+		tagCounts.set(tag, (tagCounts.get(tag) ?? 0) + 1);
+	}
+}
+const tags = [...tagCounts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+---
+
+<aside class="tag-sidebar" aria-label="标签筛选">
+	<nav class="tag-sidebar-nav">
+		<a class="tag-sidebar-link is-active" href="#" data-tag="__all__">
+			全部<span class="tag-sidebar-count">{posts.length}</span>
+		</a>
+		{
+			tags.map(([tag, count]) => (
+				<a class="tag-sidebar-link" href="#" data-tag={tag}>
+					{tag}<span class="tag-sidebar-count">{count}</span>
+				</a>
+			))
+		}
+	</nav>
+</aside>
+
+<style is:global>
+	.tag-sidebar {
+		position: fixed;
+		top: 6em;
+		/* 紧贴文章左侧：正文居中，标签栏放在其左外侧 */
+		left: calc(50% - var(--content-width) / 2 - 2em - 180px);
+		width: 180px;
+		max-height: calc(100vh - 8em);
+		overflow-y: auto;
+		scrollbar-width: none;
+		-ms-overflow-style: none;
+		font-size: 12px;
+		color: var(--text);
+		/* 左侧留出圆点空间，防止小圆点左边缘被截断 */
+		padding-left: 8px;
+	}
+	.tag-sidebar::-webkit-scrollbar {
+		display: none;
+	}
+
+	.tag-sidebar-nav {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 0;
+	}
+
+	.tag-sidebar-link {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		position: relative;
+		padding: 0.45em 0.7em 0.45em calc(18px);
+		color: var(--text);
+		font-size: 12px;
+		line-height: 1.45;
+		text-decoration: none;
+		border-radius: 6px;
+		transition: color 0.15s ease, background-color 0.15s ease;
+	}
+
+	/* 每个标签前的小圆点 */
+	.tag-sidebar-link::before {
+		content: '';
+		position: absolute;
+		left: 8px;
+		top: 0.78em;
+		width: 5px;
+		height: 5px;
+		border-radius: 50%;
+		background: var(--border-strong);
+		transition: background 0.15s ease, transform 0.15s ease;
+	}
+
+	.tag-sidebar-link:hover {
+		color: var(--accent);
+		text-decoration: none;
+		background: var(--bg-hover);
+	}
+	.tag-sidebar-link:hover::before {
+		background: var(--accent);
+	}
+
+	.tag-sidebar-link.is-active {
+		color: var(--accent);
+		font-weight: 600;
+	}
+	.tag-sidebar-link.is-active::before {
+		background: var(--accent);
+		transform: scale(1.5);
+	}
+
+	.tag-sidebar-count {
+		font-size: 0.82em;
+		color: var(--text-tertiary);
+		background: var(--bg-subtle);
+		padding: 0 0.45em;
+		border-radius: 10px;
+		line-height: 1.6;
+	}
+	.tag-sidebar-link.is-active .tag-sidebar-count {
+		color: var(--accent);
+		background: color-mix(in srgb, var(--accent) 12%, transparent);
+	}
+
+	/* 屏幕较窄时隐藏 */
+	@media (max-width: 1180px) {
+		.tag-sidebar {
+			display: none;
+		}
+	}
+</style>
+
+<script>
+	function initTagSidebar() {
+		const sidebar = document.querySelector<HTMLElement>('.tag-sidebar');
+		if (!sidebar) return;
+
+		const links = Array.from(
+			sidebar.querySelectorAll<HTMLAnchorElement>('.tag-sidebar-link')
+		);
+		const items = Array.from(
+			document.querySelectorAll<HTMLElement>('.post-item')
+		);
+		const noResults = document.querySelector<HTMLElement>('.no-results');
+		if (links.length === 0) return;
+
+		links.forEach((link) => {
+			link.addEventListener('click', (e) => {
+				e.preventDefault();
+				const tag = link.dataset.tag;
+				links.forEach((l) => l.classList.toggle('is-active', l === link));
+
+				let visible = 0;
+				items.forEach((item) => {
+					const tags = (item.dataset.tags || '').split(',').filter(Boolean);
+					const show = tag === '__all__' || tags.includes(tag!);
+					item.hidden = !show;
+					if (show) visible++;
+				});
+				if (noResults) noResults.hidden = visible !== 0;
+			});
+		});
+	}
+
+	document.addEventListener('astro:page-load', initTagSidebar);
+	if (document.readyState !== 'loading') {
+		initTagSidebar();
+	} else {
+		document.addEventListener('DOMContentLoaded', initTagSidebar);
+	}
+</script>
